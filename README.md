@@ -51,7 +51,7 @@ El registro de comandos reemplaza los comandos de esta aplicación en el servido
 
 ## Uso local
 
-Con Node.js 22.12 o superior, copia `config.example.json` a `config.json` y completa los valores, o define las variables de entorno.
+Con Node.js 22.12 o superior, define las variables de entorno indicadas arriba. `.env.example` contiene sus nombres y valores de ejemplo.
 
 ```powershell
 npm ci
@@ -60,7 +60,7 @@ npm run commands
 npm start
 ```
 
-`npm start` y `npm run start:railway` registran comandos y arrancan en una sola ejecución. `npm test` verifica configuración, autorización y comunicación con respuestas simuladas, sin conectar a Discord ni MTA.
+`npm start` y `npm run start:railway` registran comandos y arrancan en una sola ejecución.
 
 ## Diagnóstico
 
