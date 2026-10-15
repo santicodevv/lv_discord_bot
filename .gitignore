@@ -1,0 +1,13 @@
+node_modules/
+config.json
+config.*.json
+!config.example.json
+.env
+.env.*
+!.env.example
+*.private.env
+*.log
+*.zip
+.railway/
+.DS_Store
+Thumbs.db

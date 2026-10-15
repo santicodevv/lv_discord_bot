@@ -1,0 +1,19 @@
+{
+  "name": "lv-discord-bot",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "start": "node src/start.js",
+    "start:railway": "node src/start.js",
+    "commands": "node src/commands.js",
+    "check": "node src/check.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "discord.js": "14.27.0"
+  }
+}
