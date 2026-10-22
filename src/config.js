@@ -1,9 +1,20 @@
 import { readFileSync } from "node:fs";
+import { loadEnvFile } from "node:process";
 
 export function loadConfig(path = new URL("../config.json", import.meta.url), env = process.env) {
     let file = {};
 
     if (!env.RAILWAY_PROJECT_ID && !env.RAILWAY_ENVIRONMENT_ID) {
+        if (env === process.env) {
+            try {
+                loadEnvFile(new URL("../.env", import.meta.url));
+            } catch (error) {
+                if (error.code !== "ENOENT") {
+                    throw new Error("No se pudo leer .env. Comprueba sus permisos y el formato del archivo.");
+                }
+            }
+        }
+
         try {
             file = JSON.parse(readFileSync(path, "utf8").replace(/^\uFEFF/, ""));
         } catch (error) {

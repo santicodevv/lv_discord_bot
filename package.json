@@ -10,7 +10,8 @@
     "start": "node src/start.js",
     "start:railway": "node src/start.js",
     "commands": "node src/commands.js",
-    "check": "node src/check.js"
+    "check": "node src/check.js",
+    "test": "node --test src/characters.test.js src/slots.test.js"
   },
   "dependencies": {
     "discord.js": "14.27.0"

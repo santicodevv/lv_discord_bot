@@ -2,6 +2,10 @@
 
 Bot de Discord para registrar y recuperar cuentas nativas de MTA mediante `lv_accounts`. Conserva el panel automático con menú y los comandos `/addacl` y `/removeacl`. El bot recibe las interacciones por Discord Gateway y llama al HTTP del servidor MTA con una clave privada; no necesita una cuenta técnica de MTA.
 
+El acceso Discord identifica ahora la cuenta principal y `lv_character` crea sus personajes. `/addacl` y `/removeacl` requieren grupo, usuario de Discord y **personaje**. Selecciona primero el usuario para autocompletar sus personajes por nombre o ID. Las ACL se asignan únicamente a la cuenta interna del personaje elegido; no se copian a los demás personajes ni a la cuenta principal. Reinicia el bot tras actualizarlo para registrar la nueva opción. `npm test` comprueba estos comandos sin conectarse a Discord ni al servidor real.
+
+Cada cuenta empieza con un personaje gratuito en el slot 1. El personal autorizado puede habilitar los slots adicionales con `/addslot usuario:@Persona slot:2` y retirarlos con `/removeslot usuario:@Persona slot:2`, también para el slot 3. Ambos comandos actúan sobre la cuenta principal de Discord, funcionan aunque su dueño esté desconectado y reutilizan las listas de autorización de administración ACL. El slot 1 no se puede retirar y la protección se comprueba tanto en el bot como en MTA. El resultado se confirma después de guardar el cambio; retirar un slot ocupado bloquea la selección de su personaje sin borrarlo. Una sesión en curso puede terminar y queda bloqueada al volver a entrar. Reinicia el bot para registrar estos dos comandos. No son comandos del juego ni requieren nuevas variables privadas.
+
 ## Desplegar desde GitHub en Railway
 
 1. Crea un repositorio privado de GitHub y sube el contenido del paquete limpio, con `Dockerfile`, `railway.json` y `package.json` en la raíz. Incluye los archivos que empiezan con punto. No subas el ZIP como un único archivo.
@@ -39,7 +43,7 @@ Al conectar el repositorio, Railway puede desplegar los cambios de la rama elegi
 
 Los comandos ACL exigen el permiso Administrador de Discord y, además, ser propietario del servidor o pertenecer a una de las listas autorizadas. MTA conserva su propia validación. Las variables privadas preparadas mantienen tu lista actual de autorizados.
 
-Railway usa exclusivamente sus variables y omite `config.json`. Localmente se carga `config.json` si existe; las variables de entorno tienen prioridad. El programa no carga `.env` automáticamente: para usarlo localmente ejecuta `node --env-file=.env src/start.js`.
+Railway usa exclusivamente sus variables y omite `config.json` y `.env`. Localmente el bot carga automáticamente el archivo `.env` de su carpeta y `config.json` si existe. Las variables ya definidas en el proceso tienen prioridad sobre `.env`, y ambas tienen prioridad sobre `config.json`. Esto funciona con `npm start`, `npm run check` y `npm run commands` sin flags adicionales.
 
 La conexión HTTP directa transmite la clave sin cifrar. Para protegerla en Internet, publica el HTTP de MTA detrás de un proxy HTTPS y sustituye `MTA_BASE_URL` por ese dominio. Un dominio del bot en Railway no protege la conexión hacia MTA.
 

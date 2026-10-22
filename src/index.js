@@ -15,6 +15,7 @@ import {
 import { pathToFileURL } from "node:url";
 import { loadConfig } from "./config.js";
 import { createAclHandler, isAclInteraction } from "./acl.js";
+import { createSlotHandler, isSlotInteraction } from "./slots.js";
 import { verifyWithMta, normalizeCode, callMta, mtaMessages } from "./mta.js";
 
 const MENU_ID = "accounts:menu";
@@ -246,6 +247,7 @@ export async function startBot(config) {
     });
     const handleInteraction = createInteractionHandler(config);
     const handleAcl = createAclHandler(config);
+    const handleSlot = createSlotHandler(config);
 
     client.once(Events.ClientReady, (readyClient) => {
         console.log("Bot conectado como " + readyClient.user.tag + ".");
@@ -258,7 +260,7 @@ export async function startBot(config) {
     });
 
     client.on(Events.InteractionCreate, (interaction) => {
-        const run = isAclInteraction(interaction) ? handleAcl : handleInteraction;
+        const run = isSlotInteraction(interaction) ? handleSlot : isAclInteraction(interaction) ? handleAcl : handleInteraction;
 
         run(interaction).catch(async () => {
             if (interaction.isAutocomplete()) {

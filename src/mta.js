@@ -1,4 +1,6 @@
 import { isDiscordId } from "./config.js";
+import { randomUUID } from "node:crypto";
+import { setTimeout as delay } from "node:timers/promises";
 
 export const mtaMessages = {
     "ERROR: Invalid API Key": "La clave privada del bot no coincide con MTA. Avísale a administración.",
@@ -26,6 +28,14 @@ export const mtaMessages = {
     "ERROR: Not a member": "Ese usuario no pertenece a ese grupo ACL.",
     "ERROR: ACL change failed": "MTA no pudo cambiar el grupo ACL.",
     "ERROR: ACL not saved": "El cambio se aplicó en MTA, pero no se pudo guardar en acl.xml. Revisa la consola del servidor.",
+    "ERROR: Characters unavailable": "El sistema de personajes no está disponible. Revisa lv_character.",
+    "ERROR: Character required": "Selecciona el personaje concreto al que quieres cambiar la ACL.",
+    "ERROR: Character not owned": "Ese personaje no existe, fue eliminado o no pertenece al Discord seleccionado.",
+    "ERROR: Free slot protected": "El slot inicial gratuito es permanente y no se puede retirar.",
+    "ERROR: Invalid slot": "Ese número de slot no existe en la configuración del servidor.",
+    "ERROR: Invalid action": "La operación solicitada no es válida.",
+    "ERROR: Slot busy": "Hay una operación de personajes o slots en curso para esa cuenta. Espera e inténtalo de nuevo.",
+    "ERROR: Invalid slot request": "No se pudo validar la solicitud de cambio de slots.",
 };
 
 export function normalizeCode(value) {
@@ -41,6 +51,8 @@ export async function callMtaValues(config, method, args, fetcher = fetch) {
         "listAclGroupsFromBot",
         "addAclFromBot",
         "removeAclFromBot",
+        "listCharactersFromBot",
+        "setSlotFromBot",
     ];
 
     if (!methods.includes(method)) {
@@ -107,20 +119,56 @@ export async function listAclGroups(config, fetcher = fetch) {
     return typeof values[1] === "string" && values[1] ? values[1].split("\n") : [];
 }
 
-export async function changeAcl(config, action, executorId, targetId, group, fetcher = fetch) {
+export async function listCharacters(config, targetId, fetcher = fetch) {
+    if (!isDiscordId(targetId)) {
+        throw new Error("Selecciona primero un usuario de Discord válido.");
+    }
+    const values = await callMtaValues(config, "listCharactersFromBot", [targetId], fetcher);
+    if (values[0] !== "SUCCESS") {
+        throw new Error(mtaMessages[values[0]] ?? "MTA no pudo listar los personajes.");
+    }
+    return typeof values[1] === "string" && values[1]
+        ? values[1].split("\n").map((line) => {
+            const [id, ...name] = line.split("\t");
+            return { id, name: name.join(" ") };
+        }).filter((character) => /^[1-9]\d*$/.test(character.id))
+        : [];
+}
+
+export async function changeAcl(config, action, executorId, targetId, group, characterId, fetcher = fetch) {
     if (!isDiscordId(executorId) || !isDiscordId(targetId) || !["add", "remove"].includes(action)
-        || typeof group !== "string" || !group || group.length > 64) {
+        || typeof group !== "string" || !group || group.length > 64
+        || !/^[1-9]\d*$/.test(String(characterId)) || !Number.isSafeInteger(Number(characterId))) {
         throw new Error("Datos inválidos para cambiar la ACL.");
     }
 
     const method = action === "add" ? "addAclFromBot" : "removeAclFromBot";
-    const result = await callMta(config, method, [executorId, targetId, group], fetcher);
+    const result = await callMta(config, method, [executorId, targetId, group, Number(characterId)], fetcher);
 
     if (result !== "SUCCESS") {
         throw new Error(mtaMessages[result] ?? "MTA no pudo cambiar la ACL. Contacta con administración.");
     }
 
     return result;
+}
+
+export async function changeSlot(config, action, executorId, targetId, slot, fetcher = fetch, wait = delay, requestId = randomUUID()) {
+    if (!isDiscordId(executorId) || !isDiscordId(targetId) || !["add", "remove"].includes(action)
+        || !Number.isSafeInteger(slot) || slot < 2) {
+        throw new Error("Selecciona un usuario válido y un slot adicional desde el 2. El inicial no se puede retirar.");
+    }
+    const args = [executorId, targetId, slot, action, requestId];
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+        const result = await callMta(config, "setSlotFromBot", args, fetcher);
+        if (result === "SUCCESS") {
+            return result;
+        }
+        if (result !== "PENDING") {
+            throw new Error(mtaMessages[result] ?? "MTA no pudo cambiar los slots.");
+        }
+        await wait(250);
+    }
+    throw new Error("El cambio de slot sigue pendiente de confirmación. Comprueba el resultado antes de repetir la operación.");
 }
 
 export async function verifyWithMta(config, action, userId, input, fetcher = fetch) {

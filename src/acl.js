@@ -1,5 +1,5 @@
 import { MessageFlags, PermissionFlagsBits } from "discord.js";
-import { listAclGroups, changeAcl } from "./mta.js";
+import { listAclGroups, listCharacters, changeAcl } from "./mta.js";
 
 export const ACL_COMMANDS = ["addacl", "removeacl"];
 
@@ -26,7 +26,7 @@ export function isAclAuthorized(interaction, config) {
         || roleIds.some((roleId) => allowedRoles.includes(roleId));
 }
 
-export function createAclHandler(config, mta = { listAclGroups, changeAcl }) {
+export function createAclHandler(config, mta = { listAclGroups, listCharacters, changeAcl }) {
     let cache = { groups: [], expiresAt: 0 };
 
     async function getGroups() {
@@ -41,13 +41,23 @@ export function createAclHandler(config, mta = { listAclGroups, changeAcl }) {
         let choices = [];
 
         if (interaction.guildId === config.discord.guildId && isAclAuthorized(interaction, config)) {
-            const typed = interaction.options.getFocused().toLowerCase();
+            const focused = interaction.options.getFocused(true);
+            const typed = String(focused.value).toLowerCase();
 
             try {
-                choices = (await getGroups())
-                    .filter((name) => name.toLowerCase().includes(typed))
-                    .slice(0, 25)
-                    .map((name) => ({ name: name.slice(0, 100), value: name }));
+                if (focused.name === "personaje") {
+                    const target = interaction.options.get("usuario");
+                    const characters = target?.value ? await mta.listCharacters(config.mta, target.value) : [];
+                    choices = characters
+                        .filter((character) => (character.id + " " + character.name).toLowerCase().includes(typed))
+                        .slice(0, 25)
+                        .map((character) => ({ name: ("#" + character.id + " · " + character.name).slice(0, 100), value: character.id }));
+                } else {
+                    choices = (await getGroups())
+                        .filter((name) => name.toLowerCase().includes(typed))
+                        .slice(0, 25)
+                        .map((name) => ({ name: name.slice(0, 100), value: name }));
+                }
             } catch {
                 choices = [];
             }
@@ -81,6 +91,7 @@ export function createAclHandler(config, mta = { listAclGroups, changeAcl }) {
         const action = interaction.commandName === "addacl" ? "add" : "remove";
         const group = interaction.options.getString("acl", true);
         const target = interaction.options.getUser("usuario", true);
+        const characterId = interaction.options.getString("personaje", true);
 
         if (target.bot) {
             await interaction.reply({
@@ -93,12 +104,12 @@ export function createAclHandler(config, mta = { listAclGroups, changeAcl }) {
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
         try {
-            await mta.changeAcl(config.mta, action, interaction.user.id, target.id, group);
+            await mta.changeAcl(config.mta, action, interaction.user.id, target.id, group, characterId);
             cache.expiresAt = 0;
             await interaction.editReply({
                 content: action === "add"
-                    ? "Se agregó la ACL **" + group + "** a <@" + target.id + ">."
-                    : "Se quitó la ACL **" + group + "** a <@" + target.id + ">.",
+                    ? "Se agregó la ACL **" + group + "** al personaje **#" + characterId + "** de <@" + target.id + ">."
+                    : "Se quitó la ACL **" + group + "** al personaje **#" + characterId + "** de <@" + target.id + ">.",
                 allowedMentions: { parse: [] },
             });
         } catch (error) {
